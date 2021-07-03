@@ -10,6 +10,8 @@ import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
@@ -21,6 +23,10 @@ import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.client.indices.GetIndexResponse;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.TermQueryBuilder;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import org.junit.Before;
 import org.junit.jupiter.api.Test;
@@ -111,5 +117,21 @@ class Elasticsearch761ApiApplicationTests {
         }
         final BulkResponse bulkResponse = elasticsearchClient.bulk(request, RequestOptions.DEFAULT);
         System.out.println(JSON.toJSONString(bulkResponse));
+    }
+
+    @Test
+    void searchQuery() throws Exception {
+        final SearchRequest searchRequest = new SearchRequest("es761");
+
+        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
+        final TermQueryBuilder termQueryBuilder = QueryBuilders.termQuery("name", "孙悟空");
+        searchSourceBuilder.query(termQueryBuilder);
+        searchSourceBuilder.timeout(TimeValue.timeValueSeconds(2));
+
+        final SearchResponse searchResponse = elasticsearchClient.search(searchRequest, RequestOptions.DEFAULT);
+        System.out.println(JSON.toJSONString(searchResponse));
+        System.out.println(JSON.toJSONString(searchResponse.getHits()));
+
     }
 }
