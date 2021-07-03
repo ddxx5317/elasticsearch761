@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/elasticsearch761-api/elasticsearch761-api.iml" filepath="$PROJECT_DIR$/elasticsearch761-api/elasticsearch761-api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/elasticsearch761-jd/elasticsearch761-jd.iml" filepath="$PROJECT_DIR$/elasticsearch761-jd/elasticsearch761-jd.iml" />
     </modules>
   </component>
 </project>
