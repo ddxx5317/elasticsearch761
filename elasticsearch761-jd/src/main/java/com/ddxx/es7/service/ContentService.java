@@ -64,10 +64,10 @@ public class ContentService {
         final SearchRequest searchRequest = new SearchRequest(INDEX_NAME);
 
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        searchSourceBuilder.from(pageNo);
+        searchSourceBuilder.from((pageNo-1)*pageSize);
         searchSourceBuilder.size(pageSize);
 
-        final TermQueryBuilder queryBuilder = QueryBuilders.termQuery("name", keyword);
+        final MatchQueryBuilder queryBuilder = QueryBuilders.matchQuery("name", keyword);
         searchSourceBuilder.query(queryBuilder);
         searchSourceBuilder.timeout(TimeValue.timeValueSeconds(20));
 
