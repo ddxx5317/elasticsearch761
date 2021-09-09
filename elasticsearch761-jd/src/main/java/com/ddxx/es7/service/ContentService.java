@@ -71,6 +71,7 @@ public class ContentService {
         searchSourceBuilder.query(queryBuilder);
         searchSourceBuilder.timeout(TimeValue.timeValueSeconds(20));
 
+
         //高亮
         final HighlightBuilder highlightBuilder = new HighlightBuilder();
         highlightBuilder.field("name");

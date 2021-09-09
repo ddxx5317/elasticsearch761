@@ -1,6 +1,7 @@
 package com.ddxx.es7;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -19,23 +20,27 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
-import org.elasticsearch.client.indices.GetIndexRequest;
-import org.elasticsearch.client.indices.GetIndexResponse;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.RangeQueryBuilder;
 import org.elasticsearch.index.query.TermQueryBuilder;
+import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
-import org.junit.Before;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 @SpringBootTest
 class Elasticsearch761ApiApplicationTests {
@@ -61,7 +66,7 @@ class Elasticsearch761ApiApplicationTests {
 
     @Test
     void addDoc() throws Exception {
-        final User user = new User("孙悟空", "花果山", 500);
+        final User user = new User("孙悟空", "花果山", 500,new Date());
         IndexRequest request = new IndexRequest("es761");
         request.id("1");
         request.timeout(TimeValue.timeValueDays(1));
@@ -87,7 +92,7 @@ class Elasticsearch761ApiApplicationTests {
     void updateDoc() throws Exception {
         UpdateRequest request = new UpdateRequest("es761","1");
         request.timeout(TimeValue.timeValueSeconds(1));
-        final User user = new User("齐天大圣", "花果山888号", 500);
+        final User user = new User("齐天大圣", "花果山888号", 500,new Date());
         request.doc(JSON.toJSONString(user),XContentType.JSON);
         final UpdateResponse updateResponse = elasticsearchClient.update(request, RequestOptions.DEFAULT);
         System.out.println(JSON.toJSONString(updateResponse));
@@ -105,33 +110,85 @@ class Elasticsearch761ApiApplicationTests {
     void bulkAddDoc() throws Exception {
         BulkRequest request = new BulkRequest();
         request.timeout(TimeValue.timeValueSeconds(3));
-        final ArrayList<User> users = new ArrayList<>();
-        users.add(new User("孙悟空","花果山",500));
-        users.add(new User("红孩儿","火焰山",200));
-        users.add(new User("嫦娥","广寒宫",400));
+        final List<User> users = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        users.add(new User("孙悟空","花果山",500, toDate(now.plusDays(1))));
+        users.add(new User("红孩儿","火焰山",200, toDate(now.plusDays(2))));
+        users.add(new User("嫦娥","广寒宫",100, toDate(now.plusDays(4))));
+        users.add(new User("猪八戒","高老庄",300, toDate(now.plusDays(5))));
+        users.add(new User("敖丙","东海龙宫",400, toDate(now.plusDays(6))));
+        users.add(new User("孙悟空","花果山",800, toDate(now.plusDays(8))));
+        users.add(new User("孙悟空","水帘洞",600, toDate(now.plusDays(3))));
 
+        System.out.println(JSON.toJSONString(users));
         for (int i = 0; i < users.size(); i++) {
-            request.add(new IndexRequest("es761-bulk")
+            request.add(new IndexRequest("es761_users")
                     .id(""+(i+1))
                     .source(JSON.toJSONString(users.get(i)),XContentType.JSON));
         }
         final BulkResponse bulkResponse = elasticsearchClient.bulk(request, RequestOptions.DEFAULT);
-        System.out.println(JSON.toJSONString(bulkResponse));
+        System.out.println(JSON.toJSONString(!bulkResponse.hasFailures()));
+        System.out.println(JSON.toJSONString(bulkResponse.buildFailureMessage()));
     }
 
     @Test
     void searchQuery() throws Exception {
-        final SearchRequest searchRequest = new SearchRequest("es761");
+        final SearchRequest searchRequest = new SearchRequest("es761_users");
 
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-        final TermQueryBuilder termQueryBuilder = QueryBuilders.termQuery("name", "孙悟空");
-        searchSourceBuilder.query(termQueryBuilder);
+        List<Integer> ages = new ArrayList<>();
+        ages.add(500);
+        ages.add(600);
+
+        //等值条件
+        final BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery()
+                .must(QueryBuilders.termQuery("name", "孙悟空"));
+
+        //IN条件
+        BoolQueryBuilder agesQueryBuilder = QueryBuilders.boolQuery();
+        ages.forEach(age ->{
+            agesQueryBuilder.should(QueryBuilders.termQuery("age", age));
+        });
+        queryBuilder.must(agesQueryBuilder);
+
+        //范围条件
+        String start = "2021-09-10 00:00:00";
+        String end ="2021-09-10 23:23:59";
+        String format = "yyyy-MM-dd HH:mm:ss";
+
+        RangeQueryBuilder rangeQueryBuilder = QueryBuilders.rangeQuery("birthDay")
+                //.format(format)
+                .from(start).to(end);
+        queryBuilder.must(rangeQueryBuilder);
+
+
+        searchSourceBuilder.query(queryBuilder);
         searchSourceBuilder.timeout(TimeValue.timeValueSeconds(2));
 
+        searchRequest.source(searchSourceBuilder);
         final SearchResponse searchResponse = elasticsearchClient.search(searchRequest, RequestOptions.DEFAULT);
-        System.out.println(JSON.toJSONString(searchResponse));
         System.out.println(JSON.toJSONString(searchResponse.getHits()));
 
+        final String jsonString = JSON.toJSONString(searchResponse.getHits().getHits());
+        System.out.println(jsonString);
+
+        System.out.println("------------------------");
+        List<User> users = new ArrayList<>();
+        for (SearchHit hit : searchResponse.getHits().getHits()) {
+            final Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+            final User user = JSONObject.parseObject(JSON.toJSONString(sourceAsMap), User.class);
+            users.add(user);
+        }
+        System.out.println(JSON.toJSONString(users));
+
+    }
+
+    public static Date toDate(LocalDateTime localDateTime) {
+        if(null == localDateTime) {
+            return null;
+        }
+        ZonedDateTime zonedDateTime = localDateTime.atZone(ZoneId.systemDefault());
+        return Date.from(zonedDateTime.toInstant());
     }
 }
