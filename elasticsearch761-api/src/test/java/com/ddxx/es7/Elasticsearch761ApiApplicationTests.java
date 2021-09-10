@@ -166,6 +166,11 @@ class Elasticsearch761ApiApplicationTests {
         searchSourceBuilder.query(queryBuilder);
         searchSourceBuilder.timeout(TimeValue.timeValueSeconds(2));
 
+        //过滤字段
+        String[] includeFields = new String[] {"name", "age"};
+        String[] excludeFields = new String[] {"_type"};
+        searchSourceBuilder.fetchSource(includeFields, excludeFields);
+
         searchRequest.source(searchSourceBuilder);
         final SearchResponse searchResponse = elasticsearchClient.search(searchRequest, RequestOptions.DEFAULT);
         System.out.println(JSON.toJSONString(searchResponse.getHits()));
@@ -176,8 +181,8 @@ class Elasticsearch761ApiApplicationTests {
         System.out.println("------------------------");
         List<User> users = new ArrayList<>();
         for (SearchHit hit : searchResponse.getHits().getHits()) {
-            final Map<String, Object> sourceAsMap = hit.getSourceAsMap();
-            final User user = JSONObject.parseObject(JSON.toJSONString(sourceAsMap), User.class);
+            //final Map<String, Object> sourceAsMap = hit.getSourceAsMap();
+            final User user = JSONObject.parseObject(hit.getSourceAsString(), User.class);
             users.add(user);
         }
         System.out.println(JSON.toJSONString(users));
